@@ -4,12 +4,9 @@ Backend untuk **CNIDS** (Centralized Network Infrastructure Documentation System
 Sistem Dokumentasi Infrastruktur Jaringan Terpusat, dikembangkan sebagai proyek
 Kerja Praktik untuk UPPTIK, UIN Siber Syekh Nurjati Cirebon.
 
-Lihat proposal KP untuk rancangan lengkap (latar belakang, use case, activity
-diagram, ERD, dan justifikasi teknologi).
-
 ## Prasyarat
 
-- Node.js 18 LTS atau lebih baru
+- Node.js 22 LTS atau lebih baru
 - MariaDB atau MySQL (versi 10.6+ / 8.0+) yang sudah berjalan
 - Akses internet (dibutuhkan sekali saat `prisma generate`/`migrate` untuk
   mengunduh query engine Prisma)
@@ -33,7 +30,7 @@ diagram, ERD, dan justifikasi teknologi).
    | Variabel | Keterangan |
    |---|---|
    | `DATABASE_URL` | Connection string ke MariaDB, format `mysql://user:pass@host:3306/nama_db` |
-   | `CORS_ORIGIN` | Origin frontend, mis. `http://localhost:16497` (wajib di production). Login memakai cookie sehingga origin harus spesifik. |
+   | `CORS_ORIGIN` | Origin frontend, mis. `http://localhost` (wajib di production). Login memakai cookie sehingga origin harus spesifik. |
 
 3. **Buat database** (jika belum ada)
 
@@ -117,7 +114,7 @@ memiliki semua hak peran di bawahnya.
 
 | Peran | Label di UI | Hak akses |
 |---|---|---|
-| `MAHASISWA_DOSEN` | User | Hanya lihat informasi non-sensitif: nama perangkat, lokasi, IP, riwayat. Field `notes` disaring oleh backend (bukan hanya disembunyikan di frontend). Tidak bisa melihat port (VLAN & tujuan koneksi), IPAM, backup konfigurasi, maupun log aktivitas. |
+| `USER` | User | Hanya lihat informasi non-sensitif: nama perangkat, lokasi, IP, riwayat. Field `notes` disaring oleh backend (bukan hanya disembunyikan di frontend). Tidak bisa melihat port (VLAN & tujuan koneksi), IPAM, backup konfigurasi, maupun log aktivitas. |
 | `ADMIN` | Admin Jaringan | Semua hak User, plus kelola dokumentasi: perangkat, port, gedung, riwayat, foto, backup konfigurasi, monitoring ping, IPAM, dan lihat log aktivitas. |
 | `SUPERADMIN` | Superadmin | Semua hak Admin, plus kelola akun (`/api/users`): tambah, ubah peran, nonaktifkan, atur ulang password, hapus. |
 
