@@ -1,0 +1,674 @@
+{
+  "info": {
+    "name": "CNIDS API",
+    "description": "Koleksi endpoint CNIDS. Jalankan salah satu 'Login' di folder Auth terlebih dahulu (Superadmin untuk folder Pengguna; Admin untuk dokumentasi; User untuk uji pembatasan akses). Token otomatis tersimpan ke variable {{token}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "deviceId",
+      "value": "1"
+    },
+    {
+      "key": "buildingId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Superadmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"superadmin\",\n  \"password\": \"ChangeMe123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"ChangeMe123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (User biasa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user\",\n  \"password\": \"ChangeMe123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Profil Saya (Me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pengguna (Superadmin)",
+      "item": [
+        {
+          "name": "List Pengguna",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users?search=&role="
+          }
+        },
+        {
+          "name": "Buat Pengguna",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"dosen01\",\n  \"password\": \"passwordAman123\",\n  \"fullName\": \"Contoh Dosen\",\n  \"role\": \"MAHASISWA_DOSEN\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ubah Peran / Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/2",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Atur Ulang Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/2/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"passwordBaru123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Hapus Pengguna",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buildings",
+      "item": [
+        {
+          "name": "List Area/Gedung (datar + parentId + statusCounts)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/buildings"
+          }
+        },
+        {
+          "name": "Tambah Area/Gedung (Admin, parentId = sub-area)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/buildings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ruang Server\",\n  \"code\": \"UPPTIK-SRV\",\n  \"description\": \"Ruang server lantai 1\",\n  \"parentId\": {{buildingId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Ubah / Pindahkan Area (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/buildings/{{buildingId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gedung UPPTIK\",\n  \"parentId\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Hapus Area/Gedung (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/buildings/{{buildingId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "List Perangkat (filter status/SN/area, paginasi)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices?search=&status=ON&buildingId={{buildingId}}&page=1&pageSize=25"
+          }
+        },
+        {
+          "name": "Detail Perangkat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}"
+          }
+        },
+        {
+          "name": "Tambah Perangkat (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"SW-Core-01\",\n  \"serialNumber\": \"G1QH12345678\",\n  \"type\": \"SWITCH\",\n  \"vendor\": \"Ruijie\",\n  \"model\": \"RG-S2910-24GT4XS-E\",\n  \"ipAddress\": \"192.168.1.10\",\n  \"macAddress\": \"00:D0:F8:12:34:56\",\n  \"firmwareVersion\": \"ReyeeOS 2.320\",\n  \"buildingId\": {{buildingId}},\n  \"location\": \"Lantai 2, Ruang Server\",\n  \"description\": \"Switch core gedung UPPTIK\",\n  \"installedAt\": \"2025-03-01\",\n  \"monitorMethod\": \"ICMP\",\n  \"notes\": \"Hanya terlihat admin\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ubah Perangkat (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Diperiksa ulang setelah laporan gangguan\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pindahkan Banyak Perangkat ke Area (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/bulk-move",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [1, 2, 3],\n  \"buildingId\": {{buildingId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Hapus Perangkat (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Port Perangkat (Admin)",
+      "item": [
+        {
+          "name": "List Port",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/ports"
+          }
+        },
+        {
+          "name": "Tambah Satu Port",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/ports",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interfaceName\": \"Gi0/1\",\n  \"portMode\": \"ACCESS\",\n  \"vlan\": \"10\",\n  \"ipInterface\": \"192.168.10.5\",\n  \"prefix\": \"/24\",\n  \"description\": \"ke Access Point Lt.2\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Generate Rentang Port (Gi0/1-48, Access VLAN 10)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/ports/generate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"namePrefix\": \"Gi0/\",\n  \"start\": 1,\n  \"end\": 48,\n  \"portMode\": \"ACCESS\",\n  \"vlan\": \"10\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Tambah Banyak Port (Bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/ports/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ports\": [\n    {\n      \"interfaceName\": \"Te1/1\",\n      \"portMode\": \"TRUNK\",\n      \"vlan\": \"10,20,30\",\n      \"description\": \"uplink ke Core\"\n    },\n    {\n      \"interfaceName\": \"Te1/2\",\n      \"portMode\": \"TRUNK\",\n      \"vlan\": \"10,20,30\",\n      \"description\": \"uplink cadangan\"\n    },\n    {\n      \"interfaceName\": \"Gi0/49\",\n      \"portMode\": \"NO_VLAN\",\n      \"ipInterface\": \"10.0.0.1\",\n      \"prefix\": \"/30\",\n      \"description\": \"routed ke ISP\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Ubah Port",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/ports/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"portMode\": \"TRUNK\",\n  \"vlan\": \"10,20\",\n  \"description\": \"diubah ke trunk (IP/prefix lama otomatis dikosongkan)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Hapus Port",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/ports/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Riwayat Perangkat",
+      "item": [
+        {
+          "name": "List Riwayat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/history"
+          }
+        },
+        {
+          "name": "Tambah Riwayat (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/history",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"SERVIS\",\n  \"description\": \"Pembersihan debu dan pengecekan kabel LAN\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Foto Perangkat (Admin)",
+      "item": [
+        {
+          "name": "Upload Foto",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/photos",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "caption",
+                  "type": "text",
+                  "value": "Kondisi setelah servis"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hapus Foto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/photos/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backup Konfigurasi (Admin)",
+      "item": [
+        {
+          "name": "Upload Config",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/configs",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "config",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/configs/1/download"
+          }
+        },
+        {
+          "name": "Hapus Config",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/configs/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoring (Pelengkap)",
+      "item": [
+        {
+          "name": "Status Terkini Perangkat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/status"
+          }
+        },
+        {
+          "name": "Trigger Cek Manual (1 Perangkat, Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/devices/{{deviceId}}/status/check"
+          }
+        },
+        {
+          "name": "Trigger Cek Semua Perangkat Termonitor (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/monitoring/check-all"
+          }
+        }
+      ]
+    },
+    {
+      "name": "IPAM - Alamat IP (Admin)",
+      "item": [
+        {
+          "name": "List Semua IP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ipam"
+          }
+        },
+        {
+          "name": "Cari IP / Filter VLAN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ipam?search=192.168&vlan=10&portMode=ACCESS"
+          }
+        },
+        {
+          "name": "Filter IP per Pool",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ipam?poolId=1"
+          }
+        },
+        {
+          "name": "Daftar IP Pool Unik + Pemakaian",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ipam/pools?search=192.168"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs (Admin)",
+      "item": [
+        {
+          "name": "List Log Aktivitas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/activity-logs?page=1&pageSize=50"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Ringkasan Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Peringatan (Admin)",
+      "item": [
+        {
+          "name": "Daftar peringatan aktif",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/alerts?view=active&page=1"
+          }
+        },
+        {
+          "name": "Riwayat peringatan pulih",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/alerts?view=resolved"
+          }
+        },
+        {
+          "name": "Ringkasan (badge)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/alerts/summary"
+          }
+        },
+        {
+          "name": "Tandai diketahui",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/alerts/1/acknowledge"
+          }
+        },
+        {
+          "name": "Tandai semua diketahui",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/alerts/acknowledge-all"
+          }
+        }
+      ]
+    }
+  ],
+  "description": "Koleksi endpoint CNIDS. Autentikasi memakai cookie sesi (cnids_sid): jalankan salah satu 'Login' di folder Auth dulu, Postman menyimpan cookie otomatis (Superadmin untuk folder Pengguna; Admin untuk dokumentasi; User untuk uji pembatasan akses). Header X-Requested-With ditambahkan otomatis oleh pre-request script koleksi (wajib untuk proteksi CSRF).",
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'X-Requested-With', value: 'CNIDS' });"
+        ]
+      }
+    }
+  ]
+}

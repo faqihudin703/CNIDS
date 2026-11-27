@@ -1,0 +1,46 @@
+# ---------- Dependensi & hasil build ----------
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+
+# ---------- Rahasia & konfigurasi lokal (JANGAN di-commit) ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_*
+*.crt
+
+# ---------- Data yang dihasilkan aplikasi ----------
+# Foto dan backup konfigurasi perangkat; foldernya tetap ada lewat .gitkeep
+backend/uploads/photos/*
+backend/uploads/configs/*
+!backend/uploads/photos/.gitkeep
+!backend/uploads/configs/.gitkeep
+
+# Backup database / arsip
+*.sql
+*.sql.gz
+*.dump
+*.zip
+*.tar.gz
+backups/
+
+# ---------- Log & proses ----------
+*.log
+npm-debug.log*
+logs/
+.pm2/
+
+# ---------- Docker (override lokal) ----------
+docker-compose.override.yml
+
+# ---------- Editor & sistem operasi ----------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

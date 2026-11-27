@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Seluruh ukuran UI berbasis rem, jadi cukup menaikkan font-size root untuk layar sangat lebar.
+     Laptop FHD (<=1920px) tetap 16px; monitor 4K (2560px s.d. 3840px CSS) membesar proporsional
+     sehingga tidak tampak kecil dan "kosong". */
+  @media (min-width: 2200px) {
+    html { font-size: 112.5%; }
+  }
+  @media (min-width: 2800px) {
+    html { font-size: 131.25%; }
+  }
+  @media (min-width: 3400px) {
+    html { font-size: 150%; }
+  }
+
+  /* iOS memperbesar halaman otomatis saat fokus ke input berfont < 16px. */
+  @media (max-width: 639px) {
+    input, select, textarea { font-size: 16px; }
+  }
+
+  /* Layar sentuh: target ketuk minimal ±40px. */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select { min-height: 2.5rem; }
+    button { min-height: 2.25rem; }
+  }
+
+  body {
+    @apply bg-base-900 text-ink antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-ink;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme("colors.accent.DEFAULT");
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-base-600 rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+}
+
+/* Tabel -> kartu bertumpuk di HP (< md). Tiap <td> memakai data-label sebagai nama kolom (di kiri, absolut),
+   isi sel diberi indentasi sehingga sel berisi banyak elemen tetap rapi. */
+@media (max-width: 767px) {
+  .table-stack { min-width: 0 !important; }
+  .table-stack thead { display: none; }
+  .table-stack tbody { display: block; }
+  .table-stack tbody tr { display: block; padding: 0.625rem 0.875rem; }
+  .table-stack tbody td {
+    display: block;
+    position: relative;
+    min-height: 1.5rem;
+    padding: 0.2rem 0 0.2rem 7rem !important;
+    white-space: normal !important;
+    text-align: left !important;
+    overflow-wrap: anywhere;
+    border: 0;
+  }
+  .table-stack tbody td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 0.3rem;
+    width: 6.25rem;
+    font-size: 0.65rem;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5A6178;
+  }
+  .table-stack tbody td[data-label=""] { padding-left: 0 !important; }
+  .table-stack tbody td[data-label=""]::before { display: none; }
+  .table-stack tbody td:empty { display: none; }
+}

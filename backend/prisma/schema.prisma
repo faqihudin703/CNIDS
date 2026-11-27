@@ -1,0 +1,323 @@
+// CNIDS - Centralized Network Infrastructure Documentation System
+// Prisma schema mengikuti ERD rancangan awal pada proposal KP (Bab 3.7)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  MAHASISWA_DOSEN // User biasa/viewer: akses lihat, hanya informasi non-sensitif
+  ADMIN // Admin Jaringan (UPPTIK): kelola dokumentasi (perangkat, port, foto, config, dst.)
+  SUPERADMIN // Semua hak admin + kelola akun pengguna (user/admin)
+}
+
+enum DeviceType {
+  ROUTER
+  SWITCH
+  ACCESS_POINT
+  SERVER
+  FIREWALL
+  LAINNYA
+}
+
+enum MonitorMethod {
+  NONE // monitoring tidak diaktifkan untuk perangkat ini (default)
+  ICMP // cek ping saja
+}
+
+enum DeviceStatus {
+  UP
+  DOWN
+  UNKNOWN
+}
+
+// Status perangkat ala Ruijie Cloud (Online / Offline / Not Online Yet), diturunkan dari hasil ping:
+//   NEVER_ON : belum pernah terdeteksi aktif (belum dicek, atau ping belum pernah berhasil)
+//   ON       : ping terakhir berhasil
+//   OFF      : pernah aktif, tetapi ping terakhir gagal
+enum OnlineStatus {
+  ON
+  OFF
+  NEVER_ON
+}
+
+// Peringatan perangkat (padanan Warnings/Alarms di Ruijie Cloud). Dibuat otomatis dari hasil ping.
+enum AlertType {
+  OFFLINE // perangkat yang pernah On kini tidak merespons ping
+  HIGH_LATENCY // ping berhasil tetapi latensi melewati ambang (env ALERT_LATENCY_MS, default 200 ms)
+}
+
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+}
+
+enum AlertStatus {
+  ACTIVE // baru, belum ada yang menandai
+  ACKNOWLEDGED // sudah diketahui admin, kondisi masih berlangsung
+  RESOLVED // kondisi pulih (ditutup otomatis oleh sistem)
+}
+
+enum PortMode {
+  ACCESS // VLAN wajib; IP + prefix (CIDR) opsional
+  TRUNK // hanya VLAN; tidak boleh ada IP / prefix
+  NO_VLAN // port biasa tanpa VLAN; IP + prefix (CIDR) opsional
+}
+
+enum HistoryEventType {
+  SERVIS
+  PERBAIKAN
+  PERUBAHAN_KONFIGURASI
+  PEMASANGAN
+  STATUS // dicatat otomatis oleh sistem saat perangkat berpindah On <-> Off (mirip device log Ruijie)
+  LAINNYA
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(50)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName     String   @map("full_name") @db.VarChar(150)
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  devicesCreated      Device[]      @relation("DeviceCreatedBy")
+  activityLogs        ActivityLog[]
+  alertsAcknowledged  DeviceAlert[]
+  alertSettingsEdits  AlertSetting[]  @relation("AlertSettingUpdatedBy")
+  sessions            Session[]
+
+  @@map("users")
+}
+
+// Sesi login sisi-server. id = SHA-256 dari token acak di cookie httpOnly (token asli tidak pernah disimpan).
+model Session {
+  id         String   @id @db.Char(64)
+  userId     Int      @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(255)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Building {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(150) // nama area/gedung
+  code           String?  @unique @db.VarChar(30)
+  description    String?  @db.VarChar(255)
+  parentId       Int?     @map("parent_id") // hierarki area (pohon), null = tingkat teratas
+  topologyMapUrl String?  @map("topology_map_url") @db.VarChar(500)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  parent   Building?  @relation("BuildingTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Building[] @relation("BuildingTree")
+  devices  Device[]
+
+  @@index([parentId])
+  @@map("buildings")
+}
+
+model Device {
+  id              Int           @id @default(autoincrement())
+  name            String        @db.VarChar(150)
+  type            DeviceType    @default(LAINNYA)
+  buildingId      Int?          @map("building_id")
+  location        String?       @db.VarChar(255) // lokasi presisi, mis. "Lantai 2, Ruang Server"
+  ipAddress       String?       @map("ip_address") @db.VarChar(45) // IP manajemen
+  serialNumber    String?       @unique @map("serial_number") @db.VarChar(64)
+  vendor          String?       @db.VarChar(80) // merek, mis. Ruijie, Cisco, MikroTik
+  model           String?       @db.VarChar(100) // model/tipe produk, mis. RG-S2910-24GT4XS-E
+  macAddress      String?       @map("mac_address") @db.VarChar(17) // format AA:BB:CC:DD:EE:FF
+  firmwareVersion String?       @map("firmware_version") @db.VarChar(100)
+  description     String?       @db.VarChar(255) // deskripsi singkat, terlihat oleh semua role
+  installedAt     DateTime?     @map("installed_at") @db.Date
+  monitorMethod   MonitorMethod @default(NONE) @map("monitor_method")
+  pingIntervalSec Int           @default(300) @map("ping_interval_sec") // jeda antar ping otomatis (detik), diatur per perangkat
+  onlineStatus    OnlineStatus  @default(NEVER_ON) @map("online_status")
+  lastOnlineAt    DateTime?     @map("last_online_at") // terakhir ping berhasil
+  offlineSince    DateTime?     @map("offline_since") // mulai OFF (null jika tidak sedang OFF)
+  lastCheckedAt   DateTime?     @map("last_checked_at")
+  notes           String?       @db.Text
+  createdById     Int           @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  building     Building?      @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  createdBy    User           @relation("DeviceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  ports        DevicePort[]
+  photos       DevicePhoto[]
+  history      DeviceHistory[]
+  configs      DeviceConfig[]
+  statusChecks StatusCheck[]
+  alerts       DeviceAlert[]
+
+  @@index([buildingId])
+  @@index([ipAddress])
+  @@index([onlineStatus])
+  @@index([name]) // urutan daftar perangkat
+  @@map("devices")
+}
+
+// Pool IP dipakai bersama: satu (network, prefixLength) hanya punya satu baris, berapa pun
+// jumlah port yang berada di dalamnya. Baris dibuat/dicari otomatis saat port disimpan.
+model IpPool {
+  id           Int      @id @default(autoincrement())
+  network      String   @db.VarChar(15) // alamat network, mis. 192.168.10.0
+  prefixLength Int      @map("prefix_length") @db.TinyInt
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  ports DevicePort[]
+
+  @@unique([network, prefixLength])
+  @@map("ip_pools")
+}
+
+model DevicePort {
+  id            Int        @id @default(autoincrement())
+  deviceId      Int        @map("device_id")
+  interfaceName String     @map("interface_name") @db.VarChar(50) // mis. Gi0/1, Fa0/24, Port 12
+  ipInterface   String?    @map("ip_interface") @db.VarChar(45) // IP yang di-assign ke interface ini
+  prefix        String?    @db.VarChar(10) // CIDR, mis. /24
+  poolId        Int?       @map("pool_id") // pool bersama, ditentukan otomatis dari ipInterface + prefix
+  vlan          String?    @db.VarChar(50)
+  portMode      PortMode   @default(NO_VLAN) @map("port_mode")
+  description   String?    @db.VarChar(255) // perangkat/tujuan yang terhubung
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  device Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  pool   IpPool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
+
+  @@unique([deviceId, interfaceName])
+  @@index([deviceId])
+  @@index([poolId])
+  @@map("device_ports")
+}
+
+model DevicePhoto {
+  id        Int      @id @default(autoincrement())
+  deviceId  Int      @map("device_id")
+  fileUrl   String   @map("file_url") @db.VarChar(500)
+  caption   String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@map("device_photos")
+}
+
+model DeviceHistory {
+  id          Int              @id @default(autoincrement())
+  deviceId    Int              @map("device_id")
+  eventType   HistoryEventType @map("event_type")
+  description String           @db.Text
+  recordedAt  DateTime         @default(now()) @map("recorded_at")
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, recordedAt]) // riwayat per perangkat, terbaru dulu
+  @@map("device_history")
+}
+
+model DeviceConfig {
+  id         Int      @id @default(autoincrement())
+  deviceId   Int      @map("device_id")
+  fileUrl    String   @map("file_url") @db.VarChar(500)
+  fileName   String   @map("file_name") @db.VarChar(255)
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@map("device_configs")
+}
+
+// Tabel pelengkap/opsional - hanya terisi untuk perangkat yang mengaktifkan monitorMethod
+model StatusCheck {
+  id        Int          @id @default(autoincrement())
+  deviceId  Int          @map("device_id")
+  status    DeviceStatus @default(UNKNOWN)
+  latencyMs Int?         @map("latency_ms")
+  checkedAt DateTime     @default(now()) @map("checked_at")
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, checkedAt])
+  @@index([checkedAt]) // pembersihan data lama (retensi)
+  @@map("status_checks")
+}
+
+model DeviceAlert {
+  id               Int           @id @default(autoincrement())
+  deviceId         Int           @map("device_id")
+  type             AlertType
+  severity         AlertSeverity
+  message          String        @db.VarChar(255)
+  status           AlertStatus   @default(ACTIVE)
+  triggeredAt      DateTime      @default(now()) @map("triggered_at")
+  acknowledgedAt   DateTime?     @map("acknowledged_at")
+  acknowledgedById Int?          @map("acknowledged_by")
+  resolvedAt       DateTime?     @map("resolved_at")
+
+  device         Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  acknowledgedBy User?  @relation(fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  @@index([deviceId, status])
+  @@index([status, triggeredAt])
+  @@map("device_alerts")
+}
+
+// Pengaturan peringatan global, satu baris (id = 1), hanya Superadmin yang boleh mengubah. Baris dibuat saat pertama disimpan;
+// sebelum itu dipakai nilai bawaan (ambang latensi dari env ALERT_LATENCY_MS).
+model AlertSetting {
+  id                   Int           @id
+  offlineEnabled       Boolean       @default(true) @map("offline_enabled")
+  offlineAfterFailures Int           @default(1) @map("offline_after_failures") // ping gagal berturut-turut sebelum peringatan Off dibuka
+  offlineSeverity      AlertSeverity @default(CRITICAL) @map("offline_severity")
+  latencyEnabled       Boolean       @default(true) @map("latency_enabled")
+  latencyThresholdMs   Int           @default(200) @map("latency_threshold_ms")
+  latencySeverity      AlertSeverity @default(WARNING) @map("latency_severity")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+  updatedById          Int?          @map("updated_by")
+
+  updatedBy User? @relation("AlertSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("alert_settings")
+}
+
+model ActivityLog {
+  id       Int      @id @default(autoincrement())
+  userId   Int?     @map("user_id") // nullable: aksi sistem otomatis tidak punya user
+  action   String   @db.VarChar(255)
+  loggedAt DateTime @default(now()) @map("logged_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([loggedAt])
+  @@map("activity_logs")
+}
